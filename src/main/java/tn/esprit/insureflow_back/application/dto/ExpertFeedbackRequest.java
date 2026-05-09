@@ -1,0 +1,58 @@
+package tn.esprit.insureflow_back.application.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ExpertFeedbackRequest {
+
+    private Long claimId;
+    private String reviewedBy;
+
+    // If true, the validated expert answers are saved as learning examples.
+    private Boolean useForLearning;
+
+    // Global satisfaction from 1 to 5. It is stored as metadata and used in memory priority.
+    private Integer satisfactionScore;
+
+    private String globalComment;
+
+    // ─── ROUTEUR ───────────────────────────────────────────────────────────────
+    private String predictedType;
+    private Double routeurConfidence;
+    private Boolean routeurCorrect;
+    private String finalType;
+    private String routeurComment;
+    /** Justification textuelle complète générée par l'agent ROUTEUR (raisonnement IA). */
+    private String routeurJustification;
+
+    // ─── VALIDATION ────────────────────────────────────────────────────────────
+    private String predictedDecision;
+    private Double validationConfidence;
+    private Boolean validationCorrect;
+    private String finalDecision;
+    private String validationComment;
+    /** Justification textuelle complète générée par l'agent VALIDATION (raisonnement IA). */
+    private String validationJustification;
+
+    // ─── ESTIMATEUR ────────────────────────────────────────────────────────────
+    private Double predictedEstimationMin;
+    private Double predictedEstimationMoyenne;
+    private Double predictedEstimationMax;
+    private Double estimateurConfidence;
+    private Boolean estimateurCorrect;
+    private String estimateEvaluation;
+    private Double finalEstimationMin;
+    private Double finalEstimationMoyenne;
+    private Double finalEstimationMax;
+    private String estimateurComment;
+    /** Justification textuelle complète générée par l'agent ESTIMATEUR (raisonnement IA). */
+    private String estimateurJustification;
+}
