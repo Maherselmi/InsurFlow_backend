@@ -293,21 +293,8 @@ http://localhost:8080/swagger-ui.html
 
 ---
 
-## Install Ollama
 
-```bash
-ollama pull llama3
-ollama pull nomic-embed-text
-```
 
----
-
-## Create Database
-
-```sql
-CREATE DATABASE insureflow_db;
-CREATE EXTENSION IF NOT EXISTS vector;
-```
 
 ---
 
@@ -372,30 +359,8 @@ Protected REST API
 
 ---
 
-# 10. Design Patterns Used
 
-The backend applies several software architecture and design patterns:
-
-- Hexagonal Architecture
-- Clean Architecture
-- Repository Pattern
-- Adapter Pattern
-- DTO Pattern
-- Service Layer Pattern
-- Orchestrator Pattern
-- Safe Fallback Strategy
-- Human-in-the-loop Workflow
 
 ---
 
-# 11. Scalability
 
-The architecture allows:
-
-- easy addition of new AI agents,
-- replacement of AI providers,
-- independent module evolution,
-- scalable RAG pipelines,
-- maintainable business workflows.
-
----
