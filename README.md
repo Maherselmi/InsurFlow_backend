@@ -271,37 +271,12 @@ Swagger documentation:
 
 
 
----
 
-## Configure `application.properties`
 
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/insureflow_db
-spring.datasource.username=postgres
-spring.datasource.password=password
 
-spring.ai.ollama.base-url=http://localhost:11434
-spring.ai.ollama.chat.model=llama3
-spring.ai.ollama.embedding.model=nomic-embed-text
-
-jwt.secret=your_secret_key
-jwt.expiration=86400000
-```
 
 ---
 
-## Build & Run
-
-```bash
-./mvnw clean install
-./mvnw spring-boot:run
-```
-
-Backend available at:
-
-```txt
-http://localhost:8080
-```
 
 ---
 
