@@ -16,8 +16,6 @@
 7. [REST API Overview](#7-rest-api-overview)
 8. [Installation & Setup](#8-installation--setup)
 9. [Security](#9-security)
-10. [Design Patterns Used](#10-design-patterns-used)
-11. [Scalability](#11-scalability)
 
 ---
 
@@ -36,7 +34,7 @@ The backend exposes REST APIs consumed by the Angular frontend and orchestrates 
 - **Spring AI** for LLM communication,
 - **LangChain4j** for the RAG pipeline,
 - **Ollama** for local AI inference,
-- **PostgreSQL + pgvector** for persistence and vector search,
+- **PostgreSQL + Milvus** for persistence and vector search,
 - **Spring Security + JWT** for authentication and authorization.
 
 ---
@@ -49,29 +47,7 @@ The project follows the **Hexagonal Architecture** pattern organized into three 
 - Application Layer
 - Infrastructure Layer
 
-## Architecture Overview
 
-```txt
-Angular Frontend
-       │
-       ▼
-REST Controllers
-       │
-       ▼
-Application Layer
-       │
-       ▼
-Domain Layer
-       │
-       ▼
-Ports
-       │
-       ▼
-Infrastructure Adapters
-       │
-       ▼
-Database / AI Models / External Services
-```
 
 ## Layer Responsibilities
 
@@ -203,7 +179,7 @@ Text Splitter
 Embedding Generation
       │
       ▼
-Vector Store (pgvector)
+Vector Store (Milvus)
       │
       ▼
 Similarity Search
@@ -225,7 +201,7 @@ AI Response
 | Document Loading | LangChain4j |
 | Text Splitting | LangChain4j |
 | Embeddings | Ollama (`nomic-embed-text`) |
-| Vector Database | PostgreSQL + pgvector |
+| Vector Database | PostgreSQL + Milvus |
 | LLM | Ollama (`llama3`, `mistral`) |
 | Prompt Orchestration | Spring AI |
 
@@ -241,7 +217,7 @@ AI Response
 | LangChain4j | RAG orchestration |
 | Ollama | Local LLM runtime |
 | PostgreSQL | Relational database |
-| pgvector | Vector similarity search |
+| Milvus | Vector similarity search |
 | Spring Security | Authentication and authorization |
 | JWT | Stateless authentication |
 | Maven | Dependency management |
