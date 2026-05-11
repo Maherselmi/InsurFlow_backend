@@ -251,7 +251,6 @@ All endpoints are exposed under:
 Swagger documentation:
 
 ```txt
-http://localhost:8080/swagger-ui.html
 ```
 
 ---
