@@ -1,0 +1,174 @@
+domain;key;group;value
+PROMPT;GENERAL_INSURANCE_SYSTEM_PROMPT;VALUE;Tu es l'assistant virtuel InSurFlow, spécialisé dans l'assurance et les sinistres. Tu peux aider le client à comprendre ses contrats, déclarer un sinistre, suivre ses dossiers et comprendre les statuts de traitement. Si le client veut déclarer un sinistre, demande-lui d’écrire : Je veux déclarer un sinistre. Réponds uniquement en français avec une réponse courte, claire et rassurante.
+
+MESSAGE;NOT_LOGGED_IN;VALUE;Veuillez vous connecter pour utiliser l’assistant InsurFlow.
+MESSAGE;NOT_LOGGED_IN_UPLOAD;VALUE;Veuillez vous connecter pour joindre les documents.
+MESSAGE;NO_PENDING_DOCUMENTS;VALUE;Aucune déclaration de sinistre n’est actuellement en attente de documents.
+MESSAGE;NO_DOCUMENT_RECEIVED;VALUE;Aucun document reçu. Veuillez joindre au moins un fichier ou écrire : continuer sans document.
+MESSAGE;DOCUMENT_UPLOAD_ERROR;VALUE;Erreur lors de la réception des documents. Veuillez réessayer.
+MESSAGE;DECLARATION_CANCELLED;VALUE;D’accord, la déclaration du sinistre a été annulée.
+MESSAGE;CONFIRMATION_REQUIRED;VALUE;Veuillez répondre par OUI pour valider la déclaration ou NON pour l’annuler.
+MESSAGE;RESET_DECLARATION;VALUE;La déclaration a été réinitialisée. Vous pouvez recommencer en écrivant : je veux déclarer un sinistre.
+MESSAGE;CHOOSE_CLAIM_TYPE;VALUE;Très bien, je vais vous aider à déclarer un sinistre.\n\nQuel type de sinistre voulez-vous déclarer ?\n\n- AUTO\n- SANTE\n- HABITATION\n- VOYAGE\n- VIE
+MESSAGE;UNKNOWN_CLAIM_TYPE;VALUE;Je n’ai pas compris le type de sinistre.\n\nVeuillez choisir parmi : AUTO, SANTE, HABITATION, VOYAGE ou VIE.
+MESSAGE;ASK_INCIDENT_DATE;VALUE;Parfait. Quelle est la date de l’incident ?\n\nFormat : AAAA-MM-JJ
+MESSAGE;FUTURE_INCIDENT_DATE;VALUE;La date de l’incident ne peut pas être dans le futur.
+MESSAGE;INVALID_INCIDENT_DATE;VALUE;Format de date invalide. Exemple : 2026-05-06
+MESSAGE;ASK_DESCRIPTION;VALUE;Merci. Maintenant, décrivez en détail ce qui s’est passé.
+MESSAGE;DESCRIPTION_TOO_SHORT;VALUE;Veuillez donner une description plus détaillée du sinistre.
+MESSAGE;ASK_DOCUMENTS;VALUE;Merci. Veuillez maintenant joindre les documents disponibles.\nSi vous n’avez aucun document, écrivez : continuer sans document.
+MESSAGE;DOCUMENTS_STEP_HELP;VALUE;Veuillez joindre les documents avec le bouton de pièce jointe, ou écrivez : continuer sans document.
+MESSAGE;NO_ACTIVE_POLICY;VALUE;Vous n’avez aucune police d’assurance active actuellement.
+
+INTENT;START_CLAIM_DECLARATION;ANY;declarer sinistre
+INTENT;START_CLAIM_DECLARATION;ANY;declarer un sinistre
+INTENT;START_CLAIM_DECLARATION;ANY;declaration sinistre
+INTENT;START_CLAIM_DECLARATION;ANY;nouveau sinistre
+INTENT;START_CLAIM_DECLARATION;ANY;ouvrir sinistre
+INTENT;START_CLAIM_DECLARATION;ANY;signaler sinistre
+INTENT;START_CLAIM_DECLARATION;ANY;signaler un sinistre
+INTENT;START_CLAIM_DECLARATION;ANY;je veux declarer
+INTENT;START_CLAIM_DECLARATION;ANY;je souhaite declarer
+INTENT;START_CLAIM_DECLARATION;ANY;j ai eu un accident
+INTENT;START_CLAIM_DECLARATION;ANY;accident voiture
+INTENT;START_CLAIM_DECLARATION;ANY;accident auto
+INTENT;START_CLAIM_DECLARATION;ANY;sinistre auto
+INTENT;START_CLAIM_DECLARATION;ANY;sinistre sante
+INTENT;START_CLAIM_DECLARATION;ANY;sinistre habitation
+INTENT;START_CLAIM_DECLARATION;ANY;degat des eaux
+INTENT;START_CLAIM_DECLARATION;ANY;incendie
+INTENT;START_CLAIM_DECLARATION;ANY;vol maison
+INTENT;START_CLAIM_DECLARATION;ANY;remboursement medical
+
+INTENT;POLICY_REQUEST;POLICY_WORD;police
+INTENT;POLICY_REQUEST;POLICY_WORD;polices
+INTENT;POLICY_REQUEST;POLICY_WORD;contrat
+INTENT;POLICY_REQUEST;POLICY_WORD;contrats
+INTENT;POLICY_REQUEST;POLICY_WORD;assurance
+INTENT;POLICY_REQUEST;POLICY_WORD;garantie
+INTENT;POLICY_REQUEST;POLICY_WORD;garanties
+INTENT;POLICY_REQUEST;POLICY_WORD;couverture
+INTENT;POLICY_REQUEST;POLICY_WORD;couvertures
+INTENT;POLICY_REQUEST;DISPLAY_INTENT;affiche
+INTENT;POLICY_REQUEST;DISPLAY_INTENT;afficher
+INTENT;POLICY_REQUEST;DISPLAY_INTENT;montre
+INTENT;POLICY_REQUEST;DISPLAY_INTENT;montrer
+INTENT;POLICY_REQUEST;DISPLAY_INTENT;liste
+INTENT;POLICY_REQUEST;DISPLAY_INTENT;lister
+INTENT;POLICY_REQUEST;DISPLAY_INTENT;voir
+INTENT;POLICY_REQUEST;DISPLAY_INTENT;consulter
+INTENT;POLICY_REQUEST;DISPLAY_INTENT;quels sont
+INTENT;POLICY_REQUEST;DISPLAY_INTENT;quelles sont
+INTENT;POLICY_REQUEST;DISPLAY_INTENT;donne
+INTENT;POLICY_REQUEST;DISPLAY_INTENT;mes
+INTENT;POLICY_REQUEST;DISPLAY_INTENT;ma
+
+INTENT;CLAIM_REQUEST;CLAIM_WORD;sinistre
+INTENT;CLAIM_REQUEST;CLAIM_WORD;sinistres
+INTENT;CLAIM_REQUEST;CLAIM_WORD;dossier
+INTENT;CLAIM_REQUEST;CLAIM_WORD;dossiers
+INTENT;CLAIM_REQUEST;CLAIM_WORD;reclamation
+INTENT;CLAIM_REQUEST;CLAIM_WORD;reclamations
+INTENT;CLAIM_REQUEST;CLAIM_WORD;declaration
+INTENT;CLAIM_REQUEST;CLAIM_WORD;declarations
+INTENT;CLAIM_REQUEST;CLAIM_WORD;demande
+INTENT;CLAIM_REQUEST;CLAIM_WORD;demandes
+INTENT;CLAIM_REQUEST;DISPLAY_INTENT;affiche
+INTENT;CLAIM_REQUEST;DISPLAY_INTENT;afficher
+INTENT;CLAIM_REQUEST;DISPLAY_INTENT;montre
+INTENT;CLAIM_REQUEST;DISPLAY_INTENT;montrer
+INTENT;CLAIM_REQUEST;DISPLAY_INTENT;liste
+INTENT;CLAIM_REQUEST;DISPLAY_INTENT;lister
+INTENT;CLAIM_REQUEST;DISPLAY_INTENT;voir
+INTENT;CLAIM_REQUEST;DISPLAY_INTENT;consulter
+INTENT;CLAIM_REQUEST;DISPLAY_INTENT;suivre
+INTENT;CLAIM_REQUEST;DISPLAY_INTENT;suivi
+INTENT;CLAIM_REQUEST;DISPLAY_INTENT;quels sont
+INTENT;CLAIM_REQUEST;DISPLAY_INTENT;quelles sont
+INTENT;CLAIM_REQUEST;DISPLAY_INTENT;ou sont
+INTENT;CLAIM_REQUEST;DISPLAY_INTENT;etat
+INTENT;CLAIM_REQUEST;DISPLAY_INTENT;statut
+INTENT;CLAIM_REQUEST;DISPLAY_INTENT;mes
+
+INTENT;POSITIVE_CONFIRMATION;ANY;oui
+INTENT;POSITIVE_CONFIRMATION;ANY;yes
+INTENT;POSITIVE_CONFIRMATION;ANY;confirmer
+INTENT;POSITIVE_CONFIRMATION;ANY;je confirme
+INTENT;POSITIVE_CONFIRMATION;ANY;valider
+INTENT;POSITIVE_CONFIRMATION;ANY;je valide
+INTENT;POSITIVE_CONFIRMATION;ANY;ok
+INTENT;POSITIVE_CONFIRMATION;ANY;d accord
+INTENT;POSITIVE_CONFIRMATION;ANY;daccord
+
+INTENT;NEGATIVE_CONFIRMATION;ANY;non
+INTENT;NEGATIVE_CONFIRMATION;ANY;no
+INTENT;NEGATIVE_CONFIRMATION;ANY;annuler
+INTENT;NEGATIVE_CONFIRMATION;ANY;j annule
+INTENT;NEGATIVE_CONFIRMATION;ANY;cancel
+INTENT;NEGATIVE_CONFIRMATION;ANY;stop
+
+INTENT;CONTINUE_WITHOUT_DOCUMENT;ANY;continuer sans document
+INTENT;CONTINUE_WITHOUT_DOCUMENT;ANY;sans document
+INTENT;CONTINUE_WITHOUT_DOCUMENT;ANY;pas de document
+INTENT;CONTINUE_WITHOUT_DOCUMENT;ANY;aucun document
+
+CLAIM_TYPE;AUTO;ANY;auto
+CLAIM_TYPE;AUTO;ANY;voiture
+CLAIM_TYPE;AUTO;ANY;vehicule
+CLAIM_TYPE;AUTO;ANY;accident voiture
+CLAIM_TYPE;AUTO;ANY;accident auto
+CLAIM_TYPE;AUTO;ANY;bris de glace
+
+CLAIM_TYPE;SANTE;ANY;sante
+CLAIM_TYPE;SANTE;ANY;medical
+CLAIM_TYPE;SANTE;ANY;medecin
+CLAIM_TYPE;SANTE;ANY;hospitalisation
+CLAIM_TYPE;SANTE;ANY;pharmacie
+CLAIM_TYPE;SANTE;ANY;remboursement medical
+CLAIM_TYPE;SANTE;ANY;soin
+
+CLAIM_TYPE;HABITATION;ANY;habitation
+CLAIM_TYPE;HABITATION;ANY;maison
+CLAIM_TYPE;HABITATION;ANY;logement
+CLAIM_TYPE;HABITATION;ANY;degat des eaux
+CLAIM_TYPE;HABITATION;ANY;incendie
+CLAIM_TYPE;HABITATION;ANY;vol maison
+CLAIM_TYPE;HABITATION;ANY;cambriolage
+
+CLAIM_TYPE;VOYAGE;ANY;voyage
+CLAIM_TYPE;VOYAGE;ANY;bagage
+CLAIM_TYPE;VOYAGE;ANY;annulation voyage
+
+CLAIM_TYPE;VIE;ANY;vie
+CLAIM_TYPE;VIE;ANY;deces
+CLAIM_TYPE;VIE;ANY;invalidite
+
+STATUS;APPROVED;ANY;approuve
+STATUS;APPROVED;ANY;approuvee
+STATUS;APPROVED;ANY;accepte
+STATUS;APPROVED;ANY;acceptee
+STATUS;APPROVED;ANY;valide
+STATUS;APPROVED;ANY;validee
+
+STATUS;REJECTED;ANY;rejete
+STATUS;REJECTED;ANY;rejetee
+STATUS;REJECTED;ANY;refuse
+STATUS;REJECTED;ANY;refusee
+
+STATUS;PENDING_VALIDATION;ANY;attente
+STATUS;PENDING_VALIDATION;ANY;pending
+STATUS;PENDING_VALIDATION;ANY;validation humaine
+STATUS;PENDING_VALIDATION;ANY;en validation
+
+STATUS;IN_ANALYSIS;ANY;analyse
+STATUS;IN_ANALYSIS;ANY;en analyse
+STATUS;IN_ANALYSIS;ANY;traitement ia
+
+STATUS;CLOSED;ANY;ferme
+STATUS;CLOSED;ANY;fermee
+STATUS;CLOSED;ANY;cloture
+STATUS;CLOSED;ANY;cloturee
+
+MESSAGE;CLAIM_DECLARED_PROCESSING;VALUE;Votre sinistre a été déclaré avec succès.\n\n- Numéro dossier : #%s\n- Statut initial : %s\n\nVotre dossier est maintenant en cours d’analyse IA. Les résultats des agents seront affichés automatiquement dans cette conversation.
+MESSAGE;AGENT_RESULTS_PENDING;VALUE;Analyse IA en cours. Les agents Routeur, Validateur et Estimateur traitent encore votre dossier.
+MESSAGE;AGENT_RESULTS_READY;VALUE;Voici les résultats de l’analyse IA de votre dossier.

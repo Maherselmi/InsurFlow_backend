@@ -15,10 +15,12 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import tn.esprit.insureflow_back.application.service.AgentLearningMemoryApplicationService;
 import tn.esprit.insureflow_back.application.service.AiAgentConfigApplicationService;
+import tn.esprit.insureflow_back.application.service.CostPredictionMlService;
 import tn.esprit.insureflow_back.domain.enums.AgentName;
 import tn.esprit.insureflow_back.domain.model.AgentResult;
 import tn.esprit.insureflow_back.domain.model.Claim;
 import tn.esprit.insureflow_back.domain.model.ClaimDocument;
+import tn.esprit.insureflow_back.infrastructure.adapter.out.ml.CostPredictionRequest;
 
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
@@ -156,16 +158,19 @@ public class AgentEstimateur {
     private final ObjectMapper objectMapper;
     private final AiAgentConfigApplicationService aiAgentConfigService;
     private final AgentLearningMemoryApplicationService learningMemoryService;
+    private final CostPredictionMlService costPredictionMlService;
     public AgentEstimateur(
             @Qualifier("visionLanguageModel") ChatLanguageModel visionModel,
             ObjectMapper objectMapper,
             AiAgentConfigApplicationService aiAgentConfigService,
-            AgentLearningMemoryApplicationService learningMemoryService
+            AgentLearningMemoryApplicationService learningMemoryService,
+            CostPredictionMlService costPredictionMlService
     ) {
         this.visionModel = visionModel;
         this.objectMapper = objectMapper;
         this.aiAgentConfigService = aiAgentConfigService;
         this.learningMemoryService = learningMemoryService;
+        this.costPredictionMlService = costPredictionMlService;
     }
 
     public AgentResult estimate(
@@ -422,6 +427,7 @@ public class AgentEstimateur {
 
                 {
                   "elementsEndommages": "éléments visibles ou documents analysés",
+                  "visibleDamages": "liste des dommages visibles dans l'image ou document",
                   "imageAnalysis": "analyse détaillée de l'image ou du document visuel actuel",
                   "damageIndicators": "indices visuels utilisés",
                   "severity": "LEGER|MODERE|GRAVE|TOTAL_POTENTIEL",
@@ -431,6 +437,7 @@ public class AgentEstimateur {
                   "estimationMax": 0,
                   "confidence": 0.0,
                   "justification": "justification complète du montant estimé",
+                  "amountJustification": "justification spécifique du montant estimé",
                   "analyse": "raisonnement IA final",
                   "learningApplied": false,
                   "learningReason": "expliquer si un exemple expert similaire a influencé l'estimation",
@@ -621,6 +628,54 @@ public class AgentEstimateur {
             analyse = appendRuleNote(
                     analyse,
                     "Alerte plafond : estimation très élevée pour ce type de sinistre, validation expert recommandée."
+            );
+        }
+
+        // --- Estimation hybride LLM + XGBoost ---
+        double mlCost = costPredictionMlService.predictCost(
+                new CostPredictionRequest(
+                        normalizeTypeForLearning(typeDetecte),
+                        normalizeSeverityForMl(severity),
+                        extractDamagePartForMl(damageIndicators, imageAnalysis, costBreakdown),
+                        safe(claim.getDescription()),
+                        0
+                )
+        );
+
+        if (mlCost > 0.0 && estimationMoyenne > 0.0) {
+            double oldLlmAverage = estimationMoyenne;
+
+            estimationMoyenne = normalizeMoney((0.0 * mlCost) + (1 * oldLlmAverage));
+            estimationMin = normalizeMoney(estimationMoyenne * 0.80);
+            estimationMax = normalizeMoney(estimationMoyenne * 1.20);
+
+            double gap = Math.abs(mlCost - oldLlmAverage) / Math.max(oldLlmAverage, 1.0);
+
+            analyse = appendRuleNote(
+                    analyse,
+                    "Estimation hybride appliquée : XGBoost=" + mlCost
+                            + " DT, LLM=" + oldLlmAverage
+                            + " DT, estimation finale=" + estimationMoyenne + " DT."
+            );
+
+            if (gap > 0.50) {
+                needsHuman = true;
+                confidence = Math.min(confidence, 0.55);
+                analyse = appendRuleNote(
+                        analyse,
+                        "Écart important entre l'estimation LLM et XGBoost. Validation humaine recommandée."
+                );
+            }
+        } else if (mlCost > 0.0 && estimationMoyenne <= 0.0) {
+            estimationMoyenne = normalizeMoney(mlCost);
+            estimationMin = normalizeMoney(estimationMoyenne * 0.80);
+            estimationMax = normalizeMoney(estimationMoyenne * 1.20);
+            needsHuman = true;
+            confidence = Math.min(confidence, 0.60);
+
+            analyse = appendRuleNote(
+                    analyse,
+                    "Estimation XGBoost utilisée car l'estimation LLM était absente ou invalide."
             );
         }
 
@@ -1158,9 +1213,11 @@ public class AgentEstimateur {
                   "estimationMax": %.2f,
                   "confidence": %.2f,
                   "imageAnalysis": "%s",
+                  "visibleDamages": "",
                   "analyse": "%s",
                   "costBreakdown": "%s",
                   "justification": "%s",
+                  "amountJustification": "%s",
                   "learningApplied": %s,
                   "learningReason": "%s",
                   "needsHumanReview": %s
@@ -1173,6 +1230,7 @@ public class AgentEstimateur {
                 escapeJson(imageAnalysis),
                 escapeJson(analyse),
                 escapeJson(costBreakdown),
+                escapeJson(justification),
                 escapeJson(justification),
                 learningApplied,
                 escapeJson(learningReason),
@@ -1813,6 +1871,69 @@ public class AgentEstimateur {
         String result = sb.toString().trim();
 
         return result.length() > 300 ? result.substring(0, 300) : result;
+    }
+
+
+    private String normalizeSeverityForMl(String severity) {
+        String s = normalizeForRules(severity);
+
+        if (s.contains("leger") || s.contains("light")) {
+            return "LEGER";
+        }
+
+        if (s.contains("modere") || s.contains("moyen") || s.contains("medium")) {
+            return "MODERE";
+        }
+
+        if (s.contains("grave") || s.contains("severe") || s.contains("total")) {
+            return "GRAVE";
+        }
+
+        return "MODERE";
+    }
+
+    private String extractDamagePartForMl(
+            String damageIndicators,
+            String imageAnalysis,
+            String costBreakdown
+    ) {
+        String text = safe(damageIndicators) + " "
+                + safe(imageAnalysis) + " "
+                + safe(costBreakdown);
+
+        String normalized = normalizeForRules(text);
+
+        if (normalized.contains("pare choc") || normalized.contains("pare-choc")) return "Pare choc";
+        if (normalized.contains("phare")) return "Phare avant";
+        if (normalized.contains("capot")) return "Capot";
+        if (normalized.contains("retroviseur")) return "Rétroviseur";
+        if (normalized.contains("porte")) return "Porte avant";
+        if (normalized.contains("moteur")) return "Moteur";
+        if (normalized.contains("aile")) return "Aile";
+        if (normalized.contains("pare brise") || normalized.contains("parebrise")) return "Pare-brise";
+        if (normalized.contains("chassis")) return "Châssis";
+        if (normalized.contains("radiateur")) return "Radiateur";
+        if (normalized.contains("consultation")) return "Consultation";
+        if (normalized.contains("radio")) return "Radio";
+        if (normalized.contains("hospitalisation")) return "Hospitalisation";
+        if (normalized.contains("chirurgie") || normalized.contains("operation")) return "Chirurgie";
+        if (normalized.contains("platre")) return "Plâtre";
+        if (normalized.contains("incendie")) return "Incendie";
+        if (normalized.contains("fuite")) return "Fuite eau";
+        if (normalized.contains("plafond")) return "Plafond";
+        if (normalized.contains("toiture")) return "Toiture";
+        if (normalized.contains("bagage")) return "Bagage";
+        if (normalized.contains("annulation")) return "Annulation";
+        if (normalized.contains("retard")) return "Retard avion";
+        if (normalized.contains("deces")) return "Décès";
+        if (normalized.contains("invalidite")) return "Invalidité";
+
+        String compact = text.trim();
+        if (compact.isBlank()) {
+            return "Inconnu";
+        }
+
+        return compact.length() > 80 ? compact.substring(0, 80) : compact;
     }
 
     private String normalizeForRules(String value) {

@@ -14,10 +14,18 @@ import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
+/**
+ * Service responsable du traitement des fichiers PDF de contrats.
+ * Il extrait le texte, détecte le type du contrat et le découpe en chunks.
+ */
 @Slf4j
 @Service
 public class PdfProcessingApplicationService {
 
+    /*
+     * Traite un fichier PDF uploadé.
+     * Le contenu est extrait, typé puis transformé en documents exploitables par le RAG.
+     */
     public List<ContratDocument> processPDF(
             MultipartFile file,
             String requestedTypeContrat
@@ -25,11 +33,23 @@ public class PdfProcessingApplicationService {
 
         List<ContratDocument> documents = new ArrayList<>();
 
+        /*
+         * Ouverture du PDF avec PDFBox.
+         * Le try-with-resources ferme automatiquement le document après traitement.
+         */
         try (PDDocument document = PDDocument.load(file.getInputStream())) {
 
+            /*
+             * Extraction du texte complet du PDF.
+             */
             PDFTextStripper stripper = new PDFTextStripper();
             String text = stripper.getText(document);
 
+            /*
+             * Détection du type de contrat.
+             * La priorité est donnée au type demandé, puis au nom du fichier,
+             * puis au contenu du PDF.
+             */
             String detectedType = resolveTypeContrat(
                     requestedTypeContrat,
                     file.getOriginalFilename(),
@@ -41,8 +61,14 @@ public class PdfProcessingApplicationService {
                     detectedType
             );
 
+            /*
+             * Découpage du texte en petits blocs pour l’indexation vectorielle.
+             */
             List<String> chunks = splitIntoChunks(text, 500);
 
+            /*
+             * Transformation de chaque chunk en ContratDocument.
+             */
             for (int i = 0; i < chunks.size(); i++) {
                 ContratDocument doc = ContratDocument.builder()
                         .id(file.getOriginalFilename() + "_chunk_" + i)
@@ -60,6 +86,10 @@ public class PdfProcessingApplicationService {
         return documents;
     }
 
+    /*
+     * Découpe un texte en morceaux de taille fixe.
+     * Chaque morceau sera ensuite stocké comme un document séparé.
+     */
     private List<String> splitIntoChunks(String text, int size) {
         List<String> chunks = new ArrayList<>();
 
@@ -75,6 +105,11 @@ public class PdfProcessingApplicationService {
         return chunks;
     }
 
+    /*
+     * Détermine le type du contrat.
+     * La détection se fait par ordre de priorité :
+     * type demandé, nom du fichier, puis contenu textuel.
+     */
     private String resolveTypeContrat(
             String requestedTypeContrat,
             String fileName,
@@ -82,10 +117,17 @@ public class PdfProcessingApplicationService {
     ) {
         String explicitType = normalizeTypeValue(requestedTypeContrat);
 
+        /*
+         * Si le type a été fourni clairement par l’utilisateur,
+         * on l’utilise directement.
+         */
         if (!explicitType.equals("INCONNU")) {
             return explicitType;
         }
 
+        /*
+         * Détection du type à partir du nom du fichier.
+         */
         String normalizedFileName = normalize(fileName);
 
         if (containsAny(
@@ -118,6 +160,10 @@ public class PdfProcessingApplicationService {
             return "HABITATION";
         }
 
+        /*
+         * Si le nom du fichier ne suffit pas,
+         * on détecte le type à partir du contenu du PDF.
+         */
         String normalizedText = normalize(fullText);
 
         if (isSanteContract(normalizedText)) {
@@ -135,6 +181,9 @@ public class PdfProcessingApplicationService {
         return "INCONNU";
     }
 
+    /*
+     * Normalise le type fourni par l’utilisateur.
+     */
     private String normalizeTypeValue(String value) {
         String normalized = normalize(value);
 
@@ -145,6 +194,9 @@ public class PdfProcessingApplicationService {
         return "INCONNU";
     }
 
+    /*
+     * Vérifie si le texte correspond à un contrat santé.
+     */
     private boolean isSanteContract(String text) {
         return matches(
                 text,
@@ -160,6 +212,9 @@ public class PdfProcessingApplicationService {
         );
     }
 
+    /*
+     * Vérifie si le texte correspond à un contrat auto.
+     */
     private boolean isAutoContract(String text) {
         return matches(
                 text,
@@ -174,6 +229,9 @@ public class PdfProcessingApplicationService {
         );
     }
 
+    /*
+     * Vérifie si le texte correspond à un contrat habitation.
+     */
     private boolean isHabitationContract(String text) {
         return matches(
                 text,
@@ -186,6 +244,9 @@ public class PdfProcessingApplicationService {
         );
     }
 
+    /*
+     * Vérifie si le texte contient au moins une expression régulière donnée.
+     */
     private boolean matches(String text, String... regexes) {
         for (String regex : regexes) {
             if (Pattern.compile(regex).matcher(text).find()) {
@@ -196,6 +257,9 @@ public class PdfProcessingApplicationService {
         return false;
     }
 
+    /*
+     * Vérifie si un texte contient au moins une valeur parmi une liste.
+     */
     private boolean containsAny(String text, String... values) {
         if (text == null) {
             return false;
@@ -210,6 +274,10 @@ public class PdfProcessingApplicationService {
         return false;
     }
 
+    /*
+     * Normalise une chaîne :
+     * suppression des accents, passage en minuscules et suppression des espaces inutiles.
+     */
     private String normalize(String value) {
         if (value == null) {
             return "";

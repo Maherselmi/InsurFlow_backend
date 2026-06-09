@@ -24,8 +24,8 @@ public interface ClaimRepository extends JpaRepository<Claim, Long> {
     @Query("SELECT c FROM Claim c LEFT JOIN FETCH c.documents WHERE c.id = :id")
     Optional<Claim> findByIdWithDocuments(@Param("id") Long id);
 
-
+    List<Claim> findByClientIdOrderByCreatedAtDesc(Long clientId);
     List<Claim> findByStatus(ClaimStatus status);
     List<Claim> findClaimsByClientId(@Param("clientId") Long clientId);
-
+    List<Claim> findByPolicy_Client_IdOrderByCreatedAtDesc(Long clientId);
 }

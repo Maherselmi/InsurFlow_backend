@@ -11,17 +11,32 @@ import tn.esprit.insureflow_back.domain.model.Policy;
 import tn.esprit.insureflow_back.domain.port.out.AgentLearningFeedbackRepositoryPort;
 import tn.esprit.insureflow_back.domain.port.out.ClaimRepositoryPort;
 
+/**
+ * Service responsable d’enregistrer les feedbacks experts
+ * pour améliorer l’apprentissage des agents IA.
+ */
 @Service
 @RequiredArgsConstructor
 public class ExpertFeedbackLearningApplicationService {
 
+    /*
+     * Ports utilisés pour récupérer les sinistres
+     * et sauvegarder les feedbacks d’apprentissage.
+     */
     private final ClaimRepositoryPort claimRepositoryPort;
     private final AgentLearningFeedbackRepositoryPort learningRepositoryPort;
 
+    /*
+     * Sauvegarde les corrections ou validations données par l’expert.
+     * Chaque agent peut recevoir son propre feedback.
+     */
     @Transactional
     public int saveExpertFeedback(ExpertFeedbackRequest request) {
         validateRequest(request);
 
+        /*
+         * Récupération du sinistre concerné par le feedback expert.
+         */
         Claim claim = claimRepositoryPort.findById(request.getClaimId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Claim not found: " + request.getClaimId()
@@ -29,6 +44,10 @@ public class ExpertFeedbackLearningApplicationService {
 
         int saved = 0;
 
+        /*
+         * Sauvegarde du feedback pour l’agent routeur
+         * si l’expert a fourni un type final.
+         */
         if (hasText(request.getFinalType())) {
             upsertLearningFeedback(
                     claim,
@@ -44,6 +63,10 @@ public class ExpertFeedbackLearningApplicationService {
             saved++;
         }
 
+        /*
+         * Sauvegarde du feedback pour l’agent de validation
+         * si l’expert a fourni une décision finale.
+         */
         if (hasText(request.getFinalDecision())) {
             upsertLearningFeedback(
                     claim,
@@ -59,6 +82,10 @@ public class ExpertFeedbackLearningApplicationService {
             saved++;
         }
 
+        /*
+         * Sauvegarde du feedback pour l’agent estimateur
+         * si l’expert a fourni une estimation finale complète.
+         */
         if (hasFinalEstimate(request)) {
             upsertLearningFeedback(
                     claim,
@@ -77,6 +104,10 @@ public class ExpertFeedbackLearningApplicationService {
         return saved;
     }
 
+    /*
+     * Crée ou met à jour un feedback d’apprentissage
+     * pour un sinistre et un agent donné.
+     */
     private void upsertLearningFeedback(
             Claim claim,
             AgentName agentName,
@@ -107,6 +138,9 @@ public class ExpertFeedbackLearningApplicationService {
         learningRepositoryPort.save(feedback);
     }
 
+    /*
+     * Vérifie que la requête de feedback contient les données nécessaires.
+     */
     private void validateRequest(ExpertFeedbackRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("Feedback request is required");
@@ -123,6 +157,10 @@ public class ExpertFeedbackLearningApplicationService {
         }
     }
 
+    /*
+     * Construit les données communes du sinistre
+     * utilisées comme entrée pour les agents IA.
+     */
     private String buildCommonInput(Claim claim) {
         StringBuilder sb = new StringBuilder();
 
@@ -136,12 +174,18 @@ public class ExpertFeedbackLearningApplicationService {
         return sb.toString().trim();
     }
 
+    /*
+     * Construit l’entrée utilisée pour l’agent de validation.
+     */
     private String buildValidationInput(Claim claim, ExpertFeedbackRequest request) {
         return buildCommonInput(claim)
                 + "\nPredicted routeur type: " + safe(request.getPredictedType())
                 + "\nFinal routeur type: " + safe(request.getFinalType());
     }
 
+    /*
+     * Construit l’entrée utilisée pour l’agent estimateur.
+     */
     private String buildEstimateurInput(Claim claim, ExpertFeedbackRequest request) {
         int documentsCount = claim.getDocuments() == null
                 ? 0
@@ -152,6 +196,9 @@ public class ExpertFeedbackLearningApplicationService {
                 + "\nDocuments count: " + documentsCount;
     }
 
+    /*
+     * Formate les informations de la police liée au sinistre.
+     */
     private String buildPolicyLine(Claim claim) {
         Policy policy = claim.getPolicy();
 
@@ -167,6 +214,9 @@ public class ExpertFeedbackLearningApplicationService {
                 + ", end=" + (policy.getEndDate() == null ? "N/A" : policy.getEndDate());
     }
 
+    /*
+     * Formate la sortie produite par l’agent routeur.
+     */
     private String buildRouteurAgentOutput(ExpertFeedbackRequest request) {
         StringBuilder sb = new StringBuilder();
 
@@ -181,6 +231,9 @@ public class ExpertFeedbackLearningApplicationService {
         return sb.toString();
     }
 
+    /*
+     * Formate la sortie produite par l’agent de validation.
+     */
     private String buildValidationAgentOutput(ExpertFeedbackRequest request) {
         StringBuilder sb = new StringBuilder();
 
@@ -195,6 +248,9 @@ public class ExpertFeedbackLearningApplicationService {
         return sb.toString();
     }
 
+    /*
+     * Formate la sortie produite par l’agent estimateur.
+     */
     private String buildEstimateurAgentOutput(ExpertFeedbackRequest request) {
         StringBuilder sb = new StringBuilder();
 
@@ -217,12 +273,18 @@ public class ExpertFeedbackLearningApplicationService {
         return sb.toString();
     }
 
+    /*
+     * Formate l’estimation finale validée par l’expert.
+     */
     private String buildFinalEstimateOutput(ExpertFeedbackRequest request) {
         return "Final estimation min: " + safeDouble(request.getFinalEstimationMin())
                 + " | moyenne: " + safeDouble(request.getFinalEstimationMoyenne())
                 + " | max: " + safeDouble(request.getFinalEstimationMax());
     }
 
+    /*
+     * Détermine si l’estimation de l’agent est correcte.
+     */
     private Boolean resolveEstimateurCorrect(ExpertFeedbackRequest request) {
         if (request.getEstimateurCorrect() != null) {
             return request.getEstimateurCorrect();
@@ -247,12 +309,18 @@ public class ExpertFeedbackLearningApplicationService {
         return estimatesAreEqual(request);
     }
 
+    /*
+     * Compare les estimations prédites avec les estimations finales.
+     */
     private boolean estimatesAreEqual(ExpertFeedbackRequest request) {
         return equalsMoney(request.getPredictedEstimationMin(), request.getFinalEstimationMin())
                 && equalsMoney(request.getPredictedEstimationMoyenne(), request.getFinalEstimationMoyenne())
                 && equalsMoney(request.getPredictedEstimationMax(), request.getFinalEstimationMax());
     }
 
+    /*
+     * Compare deux montants avec une petite marge d’erreur.
+     */
     private boolean equalsMoney(Double a, Double b) {
         if (a == null || b == null) {
             return false;
@@ -261,6 +329,9 @@ public class ExpertFeedbackLearningApplicationService {
         return Math.abs(a - b) < 0.01;
     }
 
+    /*
+     * Vérifie que l’estimation finale est complète.
+     */
     private boolean hasFinalEstimate(ExpertFeedbackRequest request) {
         return request != null
                 && request.getFinalEstimationMin() != null
@@ -268,6 +339,9 @@ public class ExpertFeedbackLearningApplicationService {
                 && request.getFinalEstimationMax() != null;
     }
 
+    /*
+     * Normalise le type de contrat ou de sinistre validé par l’expert.
+     */
     private String normalizeType(String value) {
         String v = safe(value).toUpperCase();
 
@@ -281,6 +355,9 @@ public class ExpertFeedbackLearningApplicationService {
         return "INCONNU";
     }
 
+    /*
+     * Normalise la décision finale de validation.
+     */
     private String normalizeDecision(String value) {
         String v = safe(value).toUpperCase();
 
@@ -290,6 +367,9 @@ public class ExpertFeedbackLearningApplicationService {
         return "INCONNU";
     }
 
+    /*
+     * Limite la note de satisfaction entre 1 et 5.
+     */
     private Integer normalizeSatisfaction(Integer value) {
         if (value == null) {
             return null;
@@ -298,6 +378,9 @@ public class ExpertFeedbackLearningApplicationService {
         return Math.max(1, Math.min(5, value));
     }
 
+    /*
+     * Fusionne le commentaire global avec le commentaire spécifique de l’agent.
+     */
     private String mergeComments(String global, String local) {
         String g = safe(global);
         String l = safe(local);
@@ -308,14 +391,23 @@ public class ExpertFeedbackLearningApplicationService {
         return g + " | " + l;
     }
 
+    /*
+     * Vérifie si une chaîne contient du texte.
+     */
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
     }
 
+    /*
+     * Sécurise une chaîne null et supprime les espaces inutiles.
+     */
     private String safe(String value) {
         return value == null ? "" : value.trim();
     }
 
+    /*
+     * Formate un nombre décimal avec deux chiffres après la virgule.
+     */
     private String safeDouble(Double value) {
         return value == null
                 ? "N/A"

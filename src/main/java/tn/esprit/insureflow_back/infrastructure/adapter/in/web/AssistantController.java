@@ -37,4 +37,11 @@ public class AssistantController {
                 assistantService.uploadClaimDocuments(clientId, conversationId, documents)
         );
     }
+
+    @GetMapping("/claim-agent-results/{claimId}")
+    public ResponseEntity<AssistantResponse> getClaimAgentResults(@PathVariable Long claimId) {
+        return ResponseEntity.ok(
+                assistantService.getClaimAgentResults(claimId)
+        );
+    }
 }

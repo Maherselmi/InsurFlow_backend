@@ -3,6 +3,9 @@ package tn.esprit.insureflow_back.application.dto;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 public class AssistantResponse {
@@ -18,6 +21,10 @@ public class AssistantResponse {
     private Long claimId;
 
     private String status;
+
+    private boolean processing;
+
+    private List<AssistantAgentResultDto> agentResults = new ArrayList<>();
 
     public AssistantResponse(String answer) {
         this.answer = answer;

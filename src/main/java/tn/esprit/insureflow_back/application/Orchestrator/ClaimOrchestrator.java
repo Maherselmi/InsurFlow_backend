@@ -13,6 +13,7 @@ import tn.esprit.insureflow_back.domain.model.Claim;
 import tn.esprit.insureflow_back.domain.port.out.AgentResultRepositoryPort;
 import tn.esprit.insureflow_back.domain.port.out.ClaimRepositoryPort;
 import tn.esprit.insureflow_back.infrastructure.adapter.out.ai.AgentEstimateur;
+import tn.esprit.insureflow_back.infrastructure.adapter.out.ai.AgentFraude;
 import tn.esprit.insureflow_back.infrastructure.adapter.out.ai.AgentRouteur;
 import tn.esprit.insureflow_back.infrastructure.adapter.out.ai.AgentValidateur;
 
@@ -29,7 +30,6 @@ public class ClaimOrchestrator {
     private final AgentRouteur agentRouteur;
     private final AgentValidateur agentValidateur;
     private final AgentEstimateur agentEstimateur;
-
     private final AgentResultRepositoryPort agentResultRepositoryPort;
     private final ClaimRepositoryPort claimRepositoryPort;
 
@@ -56,8 +56,12 @@ public class ClaimOrchestrator {
         AgentResult routeResult = null;
         AgentResult validationResult = null;
         AgentResult estimationResult = null;
+        AgentResult fraudResult = null;
 
         try {
+            /*
+             * Étape 1 : classification du sinistre.
+             */
             routeResult = safeRunRouteur(freshClaim);
             routeResult.setClaim(freshClaim);
             agentResultRepositoryPort.save(routeResult);
@@ -71,17 +75,24 @@ public class ClaimOrchestrator {
                         routeResult,
                         null,
                         null,
+                        null,
                         totalStart
                 );
                 return;
             }
 
+            /*
+             * Étape 2 : extraction du contenu documentaire.
+             */
             String claimPdfText = safeExtractPdfText(freshClaim);
 
             if (claimPdfText == null || claimPdfText.isBlank()) {
                 claimPdfText = safeText(freshClaim.getDescription());
             }
 
+            /*
+             * Étape 3 : validation de la couverture.
+             */
             validationResult = safeRunValidateur(
                     freshClaim,
                     claimPdfText,
@@ -91,8 +102,7 @@ public class ClaimOrchestrator {
             validationResult.setClaim(freshClaim);
             agentResultRepositoryPort.save(validationResult);
 
-            String validationDecision = safeText(validationResult.getConclusion())
-                    .toUpperCase(Locale.ROOT);
+            String validationDecision = extractValidationDecision(validationResult);
 
             if ("EXCLU".equals(validationDecision)) {
                 finalizeClaim(
@@ -100,6 +110,7 @@ public class ClaimOrchestrator {
                         ClaimStatus.REJECTED,
                         routeResult,
                         validationResult,
+                        null,
                         null,
                         totalStart
                 );
@@ -114,11 +125,15 @@ public class ClaimOrchestrator {
                         routeResult,
                         validationResult,
                         null,
+                        null,
                         totalStart
                 );
                 return;
             }
 
+            /*
+             * Étape 4 : estimation financière.
+             */
             estimationResult = safeRunEstimateur(
                     freshClaim,
                     routeResult,
@@ -128,13 +143,31 @@ public class ClaimOrchestrator {
             estimationResult.setClaim(freshClaim);
             agentResultRepositoryPort.save(estimationResult);
 
-            if (estimationResult.isNeedsHumanReview()) {
+            /*
+             * Étape 5 : analyse du risque de fraude.
+             *
+             * L'agent fraude ne doit pas accuser le client.
+             * Il donne uniquement un niveau de risque et indique si une validation humaine est recommandée.
+             */
+
+            /*
+             * Étape 6 : décision finale.
+             *
+             * Si l'estimateur ou l'agent fraude demande une revue humaine,
+             * le dossier passe en attente de validation.
+             */
+            boolean needsHumanReview =
+                    estimationResult.isNeedsHumanReview()
+                            || fraudResult.isNeedsHumanReview();
+
+            if (needsHumanReview) {
                 finalizeClaim(
                         freshClaim,
                         ClaimStatus.PENDING_VALIDATION,
                         routeResult,
                         validationResult,
                         estimationResult,
+                        fraudResult,
                         totalStart
                 );
             } else {
@@ -144,6 +177,7 @@ public class ClaimOrchestrator {
                         routeResult,
                         validationResult,
                         estimationResult,
+                        fraudResult,
                         totalStart
                 );
             }
@@ -164,7 +198,8 @@ public class ClaimOrchestrator {
                         freshClaim,
                         routeResult,
                         validationResult,
-                        estimationResult
+                        estimationResult,
+                        fraudResult
                 );
             } catch (Exception reportError) {
                 log.error(
@@ -298,12 +333,15 @@ public class ClaimOrchestrator {
         }
     }
 
+
+
     private void finalizeClaim(
             Claim claim,
             ClaimStatus finalStatus,
             AgentResult routeResult,
             AgentResult validationResult,
             AgentResult estimationResult,
+            AgentResult fraudResult,
             Instant totalStart
     ) {
         updateStatus(claim, finalStatus);
@@ -312,7 +350,8 @@ public class ClaimOrchestrator {
                 claim,
                 routeResult,
                 validationResult,
-                estimationResult
+                estimationResult,
+                fraudResult
         );
 
         log.info(
@@ -328,7 +367,8 @@ public class ClaimOrchestrator {
             Claim claim,
             AgentResult routeResult,
             AgentResult validationResult,
-            AgentResult estimationResult
+            AgentResult estimationResult,
+            AgentResult fraudResult
     ) {
         try {
             String expertReport = rapportService.genererRapport(
@@ -337,6 +377,8 @@ public class ClaimOrchestrator {
                     validationResult,
                     estimationResult
             );
+
+            expertReport = appendFraudSectionToExpertReport(expertReport, fraudResult);
 
             claim.setAiReport(expertReport);
 
@@ -373,20 +415,98 @@ public class ClaimOrchestrator {
         }
     }
 
+    private String appendFraudSectionToExpertReport(
+            String expertReport,
+            AgentResult fraudResult
+    ) {
+        if (fraudResult == null) {
+            return expertReport;
+        }
+
+        StringBuilder builder = new StringBuilder();
+
+        if (expertReport != null && !expertReport.isBlank()) {
+            builder.append(expertReport.trim());
+        }
+
+        builder.append("\n\n")
+                .append("=== Analyse du risque de fraude ===")
+                .append("\n")
+                .append("Conclusion : ")
+                .append(safeText(fraudResult.getConclusion()))
+                .append("\n")
+                .append("Score : ")
+                .append(fraudResult.getConfidenceScore())
+                .append("\n")
+                .append("Validation humaine requise : ")
+                .append(fraudResult.isNeedsHumanReview() ? "oui" : "non");
+
+        if (fraudResult.getRawLlmResponse() != null
+                && !fraudResult.getRawLlmResponse().isBlank()) {
+            builder.append("\n")
+                    .append("Réponse brute IA : ")
+                    .append(fraudResult.getRawLlmResponse());
+        }
+
+        return builder.toString();
+    }
+
     private String extractRoutedType(AgentResult routeResult) {
-        if (routeResult == null || routeResult.getConclusion() == null) {
+        if (routeResult == null) {
             return "INCONNU";
         }
 
-        String value = routeResult.getConclusion()
-                .trim()
-                .toUpperCase(Locale.ROOT);
+        String value = (
+                safeText(routeResult.getConclusion()) + " " +
+                        safeText(routeResult.getRawLlmResponse())
+        ).toUpperCase(Locale.ROOT);
 
         if (value.contains("AUTO")) return "AUTO";
         if (value.contains("SANTE") || value.contains("SANTÉ")) return "SANTE";
         if (value.contains("HABITATION")) return "HABITATION";
         if (value.contains("VOYAGE")) return "VOYAGE";
         if (value.contains("VIE")) return "VIE";
+
+        return "INCONNU";
+    }
+
+    private String extractValidationDecision(AgentResult validationResult) {
+        if (validationResult == null) {
+            return "INCONNU";
+        }
+
+        String value = (
+                safeText(validationResult.getConclusion()) + " " +
+                        safeText(validationResult.getRawLlmResponse())
+        ).toUpperCase(Locale.ROOT);
+
+        if (value.contains("\"DECISION\":\"EXCLU\"")
+                || value.contains("\"DECISION\": \"EXCLU\"")
+                || value.contains("DECISION : EXCLU")
+                || value.equals("EXCLU")) {
+            return "EXCLU";
+        }
+
+        if (value.contains("\"DECISION\":\"INCONNU\"")
+                || value.contains("\"DECISION\": \"INCONNU\"")
+                || value.contains("DECISION : INCONNU")
+                || value.equals("INCONNU")
+                || value.contains("INCERTAIN")
+                || value.contains("À VÉRIFIER")
+                || value.contains("A VERIFIER")) {
+            return "INCONNU";
+        }
+
+        if (value.contains("\"DECISION\":\"COUVERT\"")
+                || value.contains("\"DECISION\": \"COUVERT\"")
+                || value.contains("DECISION : COUVERT")
+                || value.equals("COUVERT")) {
+            return "COUVERT";
+        }
+
+        if (validationResult.isNeedsHumanReview()) {
+            return "INCONNU";
+        }
 
         return "INCONNU";
     }

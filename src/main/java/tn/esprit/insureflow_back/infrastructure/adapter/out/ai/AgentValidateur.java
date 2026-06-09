@@ -821,7 +821,7 @@ public class AgentValidateur {
             String justification,
             boolean needsHumanReview
     ) {
-        String safeJustification = safe(justification).replace("\"", "\\\"");
+        String safeJustification = escapeJson(justification);
 
         return String.format(
                 Locale.US,
@@ -895,6 +895,14 @@ public class AgentValidateur {
 
     private String safe(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private String escapeJson(String value) {
+        return safe(value)
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", " ")
+                .replace("\r", " ");
     }
 
     private record RagResult(

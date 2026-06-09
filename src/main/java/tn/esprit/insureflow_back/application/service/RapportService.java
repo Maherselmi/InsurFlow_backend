@@ -6,11 +6,19 @@ import org.springframework.stereotype.Service;
 import tn.esprit.insureflow_back.domain.model.AgentResult;
 import tn.esprit.insureflow_back.domain.model.Claim;
 
+/**
+ * Service responsable de la génération du rapport expert.
+ * Ce rapport synthétise le dossier, les résultats des agents IA et la décision finale.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class RapportService {
 
+    /*
+     * Génère un rapport de synthèse pour un sinistre donné.
+     * Le rapport regroupe le résumé du dossier, les analyses IA et la recommandation.
+     */
     public String genererRapport(
             Claim claim,
             AgentResult routeResult,
@@ -21,12 +29,19 @@ public class RapportService {
             throw new IllegalArgumentException("Claim obligatoire");
         }
 
+        /*
+         * Récupère le statut actuel du sinistre.
+         * Si le statut est absent, une valeur par défaut est utilisée.
+         */
         String statut = claim.getStatus() != null
                 ? claim.getStatus().name()
                 : "INCONNU";
 
         log.info("Génération rapport expert - claim #{} statut: {}", claim.getId(), statut);
 
+        /*
+         * Récupère les conclusions produites par chaque agent IA.
+         */
         String routeConclusion = routeResult != null
                 ? safe(routeResult.getConclusion())
                 : "Information non disponible";
@@ -39,6 +54,9 @@ public class RapportService {
                 ? safe(estimationResult.getConclusion())
                 : "Information non disponible";
 
+        /*
+         * Récupère les scores de confiance de chaque agent IA.
+         */
         String routeConfidence = routeResult != null
                 ? String.valueOf(routeResult.getConfidenceScore())
                 : "Information non disponible";
@@ -51,11 +69,17 @@ public class RapportService {
                 ? String.valueOf(estimationResult.getConfidenceScore())
                 : "Information non disponible";
 
+        /*
+         * Construction des différentes parties du rapport.
+         */
         String resume = buildResume(claim, statut);
         String vigilance = buildPointsVigilance(routeResult, validationResult, estimationResult, statut);
         String recommendation = buildRecommendation(statut, validationConclusion, estimationConclusion);
         String humanDecision = buildHumanDecision(statut);
 
+        /*
+         * Assemblage final du rapport expert.
+         */
         return """
                 Rapport de synthèse du sinistre n°%s
 
@@ -94,6 +118,9 @@ public class RapportService {
                 .trim();
     }
 
+    /*
+     * Construit le résumé principal du dossier.
+     */
     private String buildResume(Claim claim, String statut) {
         return """
                 Sinistre déclaré sous le dossier %s, description : %s, date du sinistre : %s.
@@ -108,6 +135,9 @@ public class RapportService {
         ).trim();
     }
 
+    /*
+     * Identifie les points nécessitant une attention humaine.
+     */
     private String buildPointsVigilance(
             AgentResult routeResult,
             AgentResult validationResult,
@@ -116,22 +146,37 @@ public class RapportService {
     ) {
         StringBuilder sb = new StringBuilder();
 
+        /*
+         * Vérifie si l’agent routeur demande une revue humaine.
+         */
         if (routeResult != null && routeResult.isNeedsHumanReview()) {
             sb.append("Le routage nécessite une revue humaine. ");
         }
 
+        /*
+         * Vérifie si l’agent validateur signale une incertitude.
+         */
         if (validationResult != null && validationResult.isNeedsHumanReview()) {
             sb.append("La validation contractuelle comporte une incertitude ou une ambiguïté. ");
         }
 
+        /*
+         * Vérifie si l’estimation financière doit être confirmée.
+         */
         if (estimationResult != null && estimationResult.isNeedsHumanReview()) {
             sb.append("L’estimation financière doit être confirmée manuellement. ");
         }
 
+        /*
+         * Ajoute un point de vigilance si le dossier attend encore une décision humaine.
+         */
         if ("PENDING_VALIDATION".equals(statut)) {
             sb.append("Le dossier reste en attente de validation humaine complémentaire. ");
         }
 
+        /*
+         * Si aucun risque particulier n’est détecté, un message standard est ajouté.
+         */
         if (sb.isEmpty()) {
             sb.append("Aucun point de vigilance majeur identifié à ce stade.");
         }
@@ -139,6 +184,9 @@ public class RapportService {
         return sb.toString().trim();
     }
 
+    /*
+     * Construit la recommandation finale selon le statut du dossier.
+     */
     private String buildRecommendation(
             String statut,
             String validationConclusion,
@@ -164,6 +212,9 @@ public class RapportService {
         };
     }
 
+    /*
+     * Génère le commentaire lié à la décision humaine.
+     */
     private String buildHumanDecision(String statut) {
         return switch (statut) {
             case "APPROVED" -> "Décision finale orientée vers l’approbation du dossier.";
@@ -173,6 +224,9 @@ public class RapportService {
         };
     }
 
+    /*
+     * Sécurise une chaîne null ou vide avec un message par défaut.
+     */
     private String safe(String value) {
         return value == null || value.isBlank()
                 ? "Information non disponible"

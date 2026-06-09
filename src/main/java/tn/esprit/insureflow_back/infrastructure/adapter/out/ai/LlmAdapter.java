@@ -1,17 +1,20 @@
 package tn.esprit.insureflow_back.infrastructure.adapter.out.ai;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import tn.esprit.insureflow_back.domain.port.out.LlmPort;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class LlmAdapter implements LlmPort {
 
     private final ChatLanguageModel chatLanguageModel;
+
+    public LlmAdapter(@Qualifier("chatLanguageModel") ChatLanguageModel chatLanguageModel) {
+        this.chatLanguageModel = chatLanguageModel;
+    }
 
     @Override
     public String generateResponse(String prompt) {

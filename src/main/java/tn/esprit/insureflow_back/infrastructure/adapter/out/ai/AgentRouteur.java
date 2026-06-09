@@ -39,7 +39,8 @@ public class AgentRouteur {
             "AUTO",
             "HABITATION",
             "SANTE",
-            "VOYAGE"
+            "VOYAGE",
+            "VIE"
     );
 
     private static final Pattern TYPE_PATTERN =
@@ -238,6 +239,24 @@ public class AgentRouteur {
             );
         }
 
+        if (containsAny(
+                lower,
+                "deces",
+                "deces assure",
+                "assurance vie",
+                "beneficiaire",
+                "capital deces",
+                "invalidite",
+                "invalidite permanente",
+                "vie"
+        )) {
+            return new ParsedClassification(
+                    "VIE",
+                    FAST_PATH_CONFIDENCE,
+                    "Classification rapide par mots-clés VIE"
+            );
+        }
+
         return null;
     }
 
@@ -248,11 +267,11 @@ public class AgentRouteur {
 
         return """
                 Tu classes un sinistre d’assurance en un seul type parmi :
-                AUTO, HABITATION, SANTE, VOYAGE.
+                AUTO, HABITATION, SANTE, VOYAGE, VIE.
 
                 Réponds uniquement en JSON valide :
                 {
-                  "type": "AUTO|HABITATION|SANTE|VOYAGE",
+                  "type": "AUTO|HABITATION|SANTE|VOYAGE|VIE",
                   "confidence": 0.0,
                   "justification": "courte justification"
                 }
@@ -460,6 +479,22 @@ public class AgentRouteur {
             );
         }
 
+        if (containsAny(
+                lower,
+                "deces",
+                "assurance vie",
+                "beneficiaire",
+                "capital deces",
+                "invalidite",
+                "vie"
+        )) {
+            return new ParsedClassification(
+                    "VIE",
+                    0.55,
+                    reason + " - fallback mots-clés VIE"
+            );
+        }
+
         log.warn("Aucun type fiable détecté via JSON ou fallback");
 
         return new ParsedClassification(
@@ -499,9 +534,7 @@ public class AgentRouteur {
             double confidence,
             String justification
     ) {
-        String safeJustification = justification == null
-                ? ""
-                : justification.replace("\"", "\\\"");
+        String safeJustification = escapeJson(justification);
 
         return """
                 {
@@ -518,6 +551,14 @@ public class AgentRouteur {
 
     private String safeText(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private String escapeJson(String value) {
+        return safeText(value)
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", " ")
+                .replace("\r", " ");
     }
 
     private String escapeForPrompt(String text) {
